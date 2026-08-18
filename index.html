@@ -376,6 +376,7 @@
   .overlay.show { opacity: 1; pointer-events: auto; }
 
   .modal {
+    position: relative;
     width: min(92vw, 420px);
     max-height: calc(100vh - 48px);
     overflow-y: auto;
@@ -403,6 +404,105 @@
     place-items: center;
     font-size: 30px;
     font-weight: 800;
+  }
+
+  /* ---------- SS(満点)演出: ガチャSSR風 ---------- */
+  .grade-badge.ss {
+    width: 76px;
+    height: 76px;
+    font-size: 25px;
+    color: #4a3200;
+    border: 2px solid rgba(255, 233, 163, 0.9);
+    background: linear-gradient(to right, #ffe9a3, #ffd75e 25%, #ff9d5c 50%, #ffd75e 75%, #ffe9a3);
+    background-size: 200% 100%;
+    animation: ss-shimmer 2.2s linear infinite, ss-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* シームレスループ: 両端同色の水平グラデを1周期(200%)だけ動かして繰り返す */
+  @keyframes ss-shimmer {
+    from { background-position: 0% 0; }
+    to { background-position: 200% 0; }
+  }
+
+  @keyframes ss-pop {
+    0% { transform: scale(0); }
+    60% { transform: scale(1.25); }
+    100% { transform: scale(1); }
+  }
+
+  /* SS時の結果画面は静的な金属質の金グラデーション。
+     縁に幅のあるハイライト(枠+内側ビーベル)を付け、文字は黒系で読みやすく */
+  .modal.ss-shine {
+    --muted: #453512;
+    color: #1f1602;
+    border: 2px solid #f0d060;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55),
+                inset 0 0 0 1px rgba(255, 240, 190, 0.6),
+                inset 0 6px 20px rgba(255, 235, 170, 0.30);
+    background: linear-gradient(155deg,
+      #a8801f 0%,
+      #cf9f2e 18%,
+      #ecc158 30%,
+      #f7dd8f 38%,
+      #ecc158 46%,
+      #c8961f 58%,
+      #9c761c 70%,
+      #cfa233 82%,
+      #e8c356 92%,
+      #b18a24 100%);
+  }
+
+  /* SS時は黒文字に合わせて、暗い背景のパネルを明るい半透明にする */
+  .modal.ss-shine .hsl-lines {
+    background: rgba(255, 255, 255, 0.30);
+    border-color: rgba(60, 40, 0, 0.25);
+  }
+
+  .modal.ss-shine .rs-delta.zero { color: #1c6b2f; }
+
+  .modal.ss-shine .perfect-tag {
+    color: #1f1602;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.55);
+  }
+
+  .perfect-tag {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #ffffff;
+    text-shadow: 0 0 12px rgba(255, 215, 94, 0.8);
+    animation: ss-blink 0.8s ease-in-out infinite alternate;
+  }
+
+  @keyframes ss-blink {
+    from { opacity: 0.7; }
+    to { opacity: 1; }
+  }
+
+  #resultOverlay.ss-flash { animation: ss-flash 0.55s ease-out; }
+
+  @keyframes ss-flash {
+    0% { background: rgba(255, 215, 94, 0.42); }
+    100% { background: rgba(10, 10, 13, 0.65); }
+  }
+
+  .dot.ss {
+    background: #ffd75e;
+    box-shadow: 0 0 7px rgba(255, 215, 94, 0.95);
+  }
+
+  .q-grade.ss {
+    background: linear-gradient(120deg, #ffe9a3, #ffd75e 40%, #ff9d5c 70%, #ffd75e);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .grade-badge.ss, .perfect-tag { animation: none; }
+    .modal.ss-shine { animation: none; }
+    #resultOverlay.ss-flash { animation: none; }
   }
 
   .score-line { display: flex; align-items: baseline; gap: 6px; }
@@ -704,11 +804,12 @@
 
 <!-- 1問ごとの判定オーバーレイ -->
 <div class="overlay" id="resultOverlay">
-  <div class="modal">
+  <div class="modal" id="resultModal">
     <div class="grade-badge" id="gradeBadge">A</div>
     <div class="score-line">
       <span class="score-num" id="resultScore">0</span>
       <span class="score-denom">/ 100</span>
+      <span class="perfect-tag" id="perfectTag" hidden>完璧!!</span>
     </div>
     <div class="delta-line"><span id="resultDelta">ΔE 0.0</span> <span class="retire-tag" id="retireTag" hidden>リタイア</span></div>
     <div class="compare">
@@ -886,6 +987,7 @@ const HUE_RAINBOW =
   'linear-gradient(to right, hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%), ' +
   'hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%))';
 const GRADE_COLORS = {
+  SS: '#ffd75e',
   S: '#ffd166',
   A: '#69db7c',
   B: '#74c0fc',
@@ -893,6 +995,8 @@ const GRADE_COLORS = {
   D: '#ff8787'
 };
 const LANG_KEY = 'colorTrainer.lang';
+// 演出確認用: ?ssdemo=1 で判定結果のグレード表示が強制的にSSになる(採点は通常どおり)
+const SS_DEMO = new URLSearchParams(location.search).has('ssdemo');
 
 // タイムアタックの設定。テストプレイ時はURLパラメータでも上書きできる:
 //   ?taplay=6(1問の秒) &taresult=2(リザルト秒) &tarounds=3(問数)
@@ -944,6 +1048,7 @@ const I18N = {
     nightmareDesc: '95点以下で即終了。連続成功回数を競う(カンスト100回)',
     streakFmt: '連続 {n}回',
     retire: 'リタイア',
+    perfect: '完璧!!',
     sessionComplete: 'セッション完了', newRecord: '新記録!',
     best: 'ベスト', total: '合計', pt: 'pt',
     avgDeltaE: '平均 ΔE',
@@ -971,6 +1076,7 @@ const I18N = {
     nightmareDesc: 'Score below 96 ends the run — chase the streak (cap 100)',
     streakFmt: 'Streak {n}',
     retire: 'Game Over',
+    perfect: 'PERFECT!!',
     sessionComplete: 'Session Complete', newRecord: 'New Record!',
     best: 'Best', total: 'Total', pt: 'pt',
     avgDeltaE: 'Avg ΔE',
@@ -1010,6 +1116,7 @@ const resultOverlay = $('resultOverlay');
 const summaryOverlay = $('summaryOverlay');
 const modeOverlay = $('modeOverlay');
 const modeChip = $('modeChip');
+const resultModal = $('resultModal');
 const taStartOverlay = $('taStartOverlay');
 const timerRow = $('timerRow');
 const timerLabel = $('timerLabel');
@@ -1030,6 +1137,7 @@ function scoreFromDeltaE(dE) {
 }
 
 function gradeFromDeltaE(dE) {
+  if (dE < 0.125) return 'SS'; // 満点(100点)。実質ピクセルパーフェクト
   if (dE < 2) return 'S';
   if (dE < 5) return 'A';
   if (dE < 10) return 'B';
@@ -1085,6 +1193,7 @@ function renderProgress() {
     const result = state.results[i - 1];
     if (result) {
       dot.style.background = GRADE_COLORS[result.grade];
+      if (result.grade === 'SS') dot.classList.add('ss');
     } else if (i === state.qIndex) {
       dot.classList.add('current');
     }
@@ -1388,6 +1497,7 @@ function newQuestion() {
   };
   sessionToken++;
   resultOverlay.classList.remove('show');
+  resultModal.classList.remove('ss-shine');
   renderSwatches();
   renderSliders();
   renderProgress();
@@ -1410,7 +1520,8 @@ function judge() {
   const labP = hslToLab(state.player.h, state.player.s, state.player.l);
   const deltaE = ciede2000(labT, labP);
   const score = scoreFromDeltaE(deltaE);
-  const grade = gradeFromDeltaE(deltaE);
+  let grade = gradeFromDeltaE(deltaE);
+  if (SS_DEMO) grade = 'SS'; // 演出確認用(採点への影響なし)
 
   state.results.push({ score, deltaE, grade, target: { ...state.target }, player: { ...state.player } });
   if (state.mode === 'nightmare') {
@@ -1426,9 +1537,22 @@ function judge() {
 
   const color = GRADE_COLORS[grade];
   const badge = $('gradeBadge');
+  const isSS = grade === 'SS';
   badge.textContent = grade;
-  badge.style.color = color;
-  badge.style.background = color + '22';
+  badge.classList.toggle('ss', isSS);
+  badge.style.color = isSS ? '' : color;
+  badge.style.background = isSS ? '' : color + '22';
+  $('perfectTag').hidden = !isSS;
+  $('perfectTag').textContent = t('perfect');
+  if (isSS) {
+    resultOverlay.classList.remove('ss-flash');
+    void resultOverlay.offsetWidth; // フラッシュのアニメーションをやり直す
+    resultOverlay.classList.add('ss-flash');
+    resultModal.classList.add('ss-shine');
+  } else {
+    resultOverlay.classList.remove('ss-flash');
+    resultModal.classList.remove('ss-shine');
+  }
 
   $('resultScore').textContent = score;
   $('resultDelta').textContent = `ΔE ${deltaE.toFixed(1)}`;
@@ -1505,7 +1629,7 @@ function showSummary() {
       <span class="mini-swatches">
         <i style="background:${hslCss(r.target)}"></i><i style="background:${hslCss(r.player)}"></i>
       </span>
-      <span class="q-grade" style="color:${GRADE_COLORS[r.grade]}">${r.grade}</span>
+      <span class="q-grade${r.grade === 'SS' ? ' ss' : ''}" style="${r.grade === 'SS' ? '' : `color:${GRADE_COLORS[r.grade]}`}">${r.grade}</span>
       <span class="q-score">${r.score} pt</span>
       <span class="q-score">ΔE ${r.deltaE.toFixed(1)}</span>
     </li>`).join('');
