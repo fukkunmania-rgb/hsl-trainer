@@ -355,6 +355,15 @@
 
   .mode-modal .lang-btn { margin-top: 8px; }
 
+  .mode-controls {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .mode-controls .lang-btn { margin-top: 0; }
+
   /* ---------- オーバーレイ ---------- */
   .overlay {
     position: fixed;
@@ -603,6 +612,7 @@
       <button type="button" class="chip-btn" id="modeChip" title="モード選択">ノーマル</button>
       <span id="bestLabel">ベスト —</span>
       <span class="total" id="totalLabel">合計 0 pt</span>
+      <button type="button" class="chip-btn space-btn" id="spaceButton">RGB</button>
       <button type="button" class="chip-btn lang-btn">EN</button>
     </div>
   </header>
@@ -626,7 +636,7 @@
 
   <section class="sliders">
     <div class="slider-row">
-      <label for="hueSlider" data-i18n="hue">色相</label>
+      <label for="hueSlider" data-channel-label="0">色相</label>
       <input type="range" id="hueSlider" min="0" max="359" step="1" value="0">
       <span class="stepper">
         <button type="button" class="step-btn" data-channel="h" data-dir="-1" aria-label="色相を1度減らす"><svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M5.5 1 2.5 4l3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -635,7 +645,7 @@
       <span class="slider-value" id="hueValue">0°</span>
     </div>
     <div class="slider-row">
-      <label for="satSlider" data-i18n="sat">彩度</label>
+      <label for="satSlider" data-channel-label="1">彩度</label>
       <input type="range" id="satSlider" min="0" max="100" step="1" value="0">
       <span class="stepper">
         <button type="button" class="step-btn" data-channel="s" data-dir="-1" aria-label="彩度を1%減らす"><svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M5.5 1 2.5 4l3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -644,7 +654,7 @@
       <span class="slider-value" id="satValue">0%</span>
     </div>
     <div class="slider-row" id="lightRow">
-      <label for="lightSlider" data-i18n="light">明度</label>
+      <label for="lightSlider" data-channel-label="2">明度</label>
       <input type="range" id="lightSlider" min="0" max="100" step="1" value="50">
       <span class="stepper">
         <button type="button" class="step-btn" data-channel="l" data-dir="-1" aria-label="明度を1%減らす"><svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M5.5 1 2.5 4l3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -685,7 +695,10 @@
       <span class="mode-desc" data-i18n="nightmareDesc">95点以下で即終了。連続成功回数を競う(カンスト100回)</span>
       <span class="mode-best" id="nightmareBest">ベスト —</span>
     </button>
-    <button type="button" class="chip-btn lang-btn">EN</button>
+    <div class="mode-controls">
+      <button type="button" class="chip-btn space-btn" id="modeSpaceButton">RGB</button>
+      <button type="button" class="chip-btn lang-btn">EN</button>
+    </div>
   </div>
 </div>
 
@@ -722,21 +735,21 @@
         <span><i class="legend-dot target"></i> <span data-i18n="target">ターゲット</span></span>
       </div>
       <div class="result-slider">
-        <span class="rs-label" data-i18n="hue">色相</span>
+        <span class="rs-label" data-channel-label="0">色相</span>
         <div class="result-track" id="rtHue">
           <span class="marker target"></span><span class="marker you"></span>
         </div>
         <span class="rs-delta" id="rdHue"></span>
       </div>
       <div class="result-slider">
-        <span class="rs-label" data-i18n="sat">彩度</span>
+        <span class="rs-label" data-channel-label="1">彩度</span>
         <div class="result-track" id="rtSat">
           <span class="marker target"></span><span class="marker you"></span>
         </div>
         <span class="rs-delta" id="rdSat"></span>
       </div>
       <div class="result-slider" id="rsLightRow">
-        <span class="rs-label" data-i18n="light">明度</span>
+        <span class="rs-label" data-channel-label="2">明度</span>
         <div class="result-track" id="rtLight">
           <span class="marker target"></span><span class="marker you"></span>
         </div>
@@ -794,8 +807,26 @@ function hslToRgb(h, s, l) {
   return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
 }
 
-function hslToLab(h, s, l) {
-  const [r, g, b] = hslToRgb(h, s, l);
+function rgbToHsl(r, g, b) {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  const l = (max + min) / 2;
+  if (delta === 0) return { h: 0, s: 0, l: l * 100 };
+
+  const s = delta / (1 - Math.abs(2 * l - 1));
+  let h;
+  if (max === r) h = ((g - b) / delta) % 6;
+  else if (max === g) h = (b - r) / delta + 2;
+  else h = (r - g) / delta + 4;
+  h = (h * 60 + 360) % 360;
+  return { h, s: s * 100, l: l * 100 };
+}
+
+function rgbToLab(r, g, b) {
   const lin = v => {
     v /= 255;
     return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
@@ -808,6 +839,10 @@ function hslToLab(h, s, l) {
   const f = t => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
   const fx = f(x), fy = f(y), fz = f(z);
   return { L: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
+}
+
+function hslToLab(h, s, l) {
+  return rgbToLab(...hslToRgb(h, s, l));
 }
 
 function ciede2000(lab1, lab2) {
@@ -926,16 +961,23 @@ const NIGHTMARE = {
 const I18N = {
   ja: {
     docTitle: 'HSLトレーナー — 色相・彩度トレーニング',
+    rgbDocTitle: 'RGBトレーナー — RGB色調整トレーニング',
     appName: 'HSLトレーナー',
+    hslAppName: 'HSLトレーナー',
+    rgbAppName: 'RGBトレーナー',
     tagline: '色相・彩度・明度の見極めをトレーニング',
+    hslTagline: '色相・彩度・明度の見極めをトレーニング',
+    rgbTagline: '赤・緑・青の見極めをトレーニング',
     target: 'ターゲット',
     yours: 'あなたの色',
     hue: '色相', sat: '彩度', light: '明度',
+    red: '赤', green: '緑', blue: '青',
     judge: '判定する', next: '次の問題', seeResults: '結果を見る',
     playAgain: 'もう一度', changeMode: 'モードを選ぶ',
     easy: 'イージー', normal: 'ノーマル',
     easyDesc: '明度は固定(30〜70%)— 色相と彩度だけ合わせる',
     normalDesc: '色相・彩度・明度をすべて合わせる',
+    rgbNormalDesc: '赤・緑・青をすべて合わせる',
     timeattack: 'タイムアタック',
     timeattackDesc: '時間制限つき。すばやく正確に合わせる',
     taStartInfoFmt: '全{r}問・1問{p}秒・リザルト{s}秒',
@@ -949,20 +991,32 @@ const I18N = {
     avgDeltaE: '平均 ΔE',
     hueDec: '色相を1度減らす', hueInc: '色相を1度増やす',
     satDec: '彩度を1%減らす', satInc: '彩度を1%増やす',
-    lightDec: '明度を1%減らす', lightInc: '明度を1%増やす'
+    lightDec: '明度を1%減らす', lightInc: '明度を1%増やす',
+    redDec: '赤を1減らす', redInc: '赤を1増やす',
+    greenDec: '緑を1減らす', greenInc: '緑を1増やす',
+    blueDec: '青を1減らす', blueInc: '青を1増やす',
+    switchToRgb: 'RGBに切り替え', switchToHsl: 'HSLに切り替え',
+    easyRgbDesc: '青を固定 — 赤と緑だけ合わせる'
   },
   en: {
     docTitle: 'HSL Trainer — Hue, Saturation & Lightness Training',
+    rgbDocTitle: 'RGB Trainer — RGB Color Training',
     appName: 'HSL Trainer',
+    hslAppName: 'HSL Trainer',
+    rgbAppName: 'RGB Trainer',
     tagline: 'Train your eye for hue, saturation & lightness',
+    hslTagline: 'Train your eye for hue, saturation & lightness',
+    rgbTagline: 'Train your eye for red, green & blue',
     target: 'Target',
     yours: 'Yours',
     hue: 'Hue', sat: 'Saturation', light: 'Lightness',
+    red: 'Red', green: 'Green', blue: 'Blue',
     judge: 'Check', next: 'Next', seeResults: 'See Results',
     playAgain: 'Play Again', changeMode: 'Change Mode',
     easy: 'Easy', normal: 'Normal',
     easyDesc: 'Lightness locked (30–70%) — match hue & saturation',
     normalDesc: 'Match hue, saturation & lightness',
+    rgbNormalDesc: 'Match red, green & blue',
     timeattack: 'Time Attack',
     timeattackDesc: 'Beat the clock — match fast & precisely',
     taStartInfoFmt: '{r} rounds · {p}s each · {s}s results',
@@ -976,11 +1030,17 @@ const I18N = {
     avgDeltaE: 'Avg ΔE',
     hueDec: 'Decrease hue by 1°', hueInc: 'Increase hue by 1°',
     satDec: 'Decrease saturation by 1%', satInc: 'Increase saturation by 1%',
-    lightDec: 'Decrease lightness by 1%', lightInc: 'Increase lightness by 1%'
+    lightDec: 'Decrease lightness by 1%', lightInc: 'Increase lightness by 1%',
+    redDec: 'Decrease red by 1', redInc: 'Increase red by 1',
+    greenDec: 'Decrease green by 1', greenInc: 'Increase green by 1',
+    blueDec: 'Decrease blue by 1', blueInc: 'Increase blue by 1',
+    switchToRgb: 'Switch to RGB', switchToHsl: 'Switch to HSL',
+    easyRgbDesc: 'Blue locked — match red & green'
   }
 };
 
 let lang = localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ja';
+let colorSpace = 'hsl';
 const t = key => I18N[lang][key];
 
 const state = {
@@ -1013,9 +1073,62 @@ const modeChip = $('modeChip');
 const taStartOverlay = $('taStartOverlay');
 const timerRow = $('timerRow');
 const timerLabel = $('timerLabel');
+const spaceButton = $('spaceButton');
+const modeSpaceButton = $('modeSpaceButton');
+const sliders = [hueSlider, satSlider, lightSlider];
+const sliderValues = [hueValue, satValue, lightValue];
 
 const hslCss = ({ h, s, l }) => `hsl(${h}, ${s}%, ${l}%)`;
+const rgbCss = values => `rgb(${values.join(', ')})`;
 const fmtSigned = (v, unit) => (v > 0 ? '+' : '') + v + unit;
+
+function channelI18nKeys() {
+  return colorSpace === 'hsl' ? ['hue', 'sat', 'light'] : ['red', 'green', 'blue'];
+}
+
+function channelShorts() {
+  return colorSpace === 'hsl' ? ['H', 'S', 'L'] : ['R', 'G', 'B'];
+}
+
+function channelUnits() {
+  return colorSpace === 'hsl' ? ['°', '%', '%'] : ['', '', ''];
+}
+
+function channelMaxes() {
+  return colorSpace === 'hsl' ? [359, 100, 100] : [255, 255, 255];
+}
+
+function channelValues(color) {
+  return colorSpace === 'hsl' ? [color.h, color.s, color.l] : hslToRgb(color.h, color.s, color.l);
+}
+
+function valuesToHsl(values) {
+  return colorSpace === 'hsl' ? { h: values[0], s: values[1], l: values[2] } : rgbToHsl(...values);
+}
+
+function colorCss(color) {
+  return colorSpace === 'hsl' ? hslCss(color) : rgbCss(channelValues(color));
+}
+
+function formatChannelValue(value, index) {
+  const unit = channelUnits()[index];
+  return `${Math.round(value)}${unit}`;
+}
+
+function channelTrackBackground(values, index) {
+  const max = channelMaxes()[index];
+  const start = [...values];
+  const end = [...values];
+  start[index] = 0;
+  end[index] = max;
+  if (colorSpace === 'hsl') {
+    if (index === 0) return HUE_RAINBOW;
+    return index === 1
+      ? `linear-gradient(to right, hsl(${values[0]}, 0%, ${values[2]}%), hsl(${values[0]}, 100%, ${values[2]}%))`
+      : `linear-gradient(to right, hsl(${values[0]}, ${values[1]}%, 0%), hsl(${values[0]}, ${values[1]}%, 50%), hsl(${values[0]}, ${values[1]}%, 100%))`;
+  }
+  return `linear-gradient(to right, ${rgbCss(start)}, ${rgbCss(end)})`;
+}
 
 // モードごとの1セットの問数
 const questionsFor = mode => (mode === 'timeattack' ? TIME_ATTACK.rounds : TOTAL_QUESTIONS);
@@ -1048,26 +1161,28 @@ function randomTarget() {
   return base;
 }
 
+function setPlayerFromValues(values) {
+  state.player = valuesToHsl(values);
+}
+
 // ---------- 描画 ----------
 
 function renderSwatches() {
-  targetSwatch.style.background = hslCss(state.target);
-  playerSwatch.style.background = hslCss(state.player);
+  targetSwatch.style.background = colorCss(state.target);
+  playerSwatch.style.background = colorCss(state.player);
 }
 
 function renderSliders() {
-  const { h, s, l } = state.player;
-  hueSlider.value = h;
-  satSlider.value = s;
-  lightSlider.value = l;
-  hueValue.textContent = h + '°';
-  satValue.textContent = s + '%';
-  lightValue.textContent = l + '%';
-  // 彩度・明度のトラックは他チャンネルの現在値でグラデーションを更新
-  satSlider.style.background =
-    `linear-gradient(to right, hsl(${h}, 0%, ${l}%), hsl(${h}, 100%, ${l}%))`;
-  lightSlider.style.background =
-    `linear-gradient(to right, hsl(${h}, ${s}%, 0%), hsl(${h}, ${s}%, 50%), hsl(${h}, ${s}%, 100%))`;
+  const values = channelValues(state.player);
+  const maxes = channelMaxes();
+  sliders.forEach((slider, i) => {
+    slider.min = 0;
+    slider.max = maxes[i];
+    slider.step = 1;
+    slider.value = Math.round(values[i]);
+    sliderValues[i].textContent = formatChannelValue(values[i], i);
+    slider.style.background = channelTrackBackground(values, i);
+  });
 }
 
 function renderProgress() {
@@ -1103,7 +1218,9 @@ function renderHeader() {
 }
 
 function bestKeyFor(mode) {
-  return `colorTrainer.best.${mode}`;
+  return colorSpace === 'hsl'
+    ? `colorTrainer.best.${mode}`
+    : `colorTrainer.best.rgb.${mode}`;
 }
 
 // 旧バージョン(モードなし)のベストスコアをノーマルモードの記録として引き継ぐ
@@ -1139,17 +1256,28 @@ function renderTaStartInfo() {
 
 function applyLang() {
   const d = I18N[lang];
-  document.title = d.docTitle;
+  document.title = colorSpace === 'hsl' ? d.docTitle : d.rgbDocTitle;
   document.querySelectorAll('[data-i18n]').forEach(el => {
-    el.textContent = d[el.dataset.i18n];
+    const key = el.dataset.i18n;
+    if (key === 'appName') el.textContent = colorSpace === 'hsl' ? d.hslAppName : d.rgbAppName;
+    else if (key === 'tagline') el.textContent = colorSpace === 'hsl' ? d.hslTagline : d.rgbTagline;
+    else if (key === 'easyDesc' && colorSpace === 'rgb') el.textContent = d.easyRgbDesc;
+    else if (key === 'normalDesc' && colorSpace === 'rgb') el.textContent = d.rgbNormalDesc;
+    else el.textContent = d[key];
   });
-  const ariaMap = {
-    h: ['hueDec', 'hueInc'],
-    s: ['satDec', 'satInc'],
-    l: ['lightDec', 'lightInc']
-  };
+  const channelKeys = channelI18nKeys();
+  document.querySelectorAll('[data-channel-label]').forEach(el => {
+    el.textContent = d[channelKeys[Number(el.dataset.channelLabel)]];
+  });
+  const ariaMap = colorSpace === 'hsl'
+    ? { h: ['hueDec', 'hueInc'], s: ['satDec', 'satInc'], l: ['lightDec', 'lightInc'] }
+    : { h: ['redDec', 'redInc'], s: ['greenDec', 'greenInc'], l: ['blueDec', 'blueInc'] };
   document.querySelectorAll('.step-btn').forEach(btn => {
     btn.setAttribute('aria-label', d[ariaMap[btn.dataset.channel][btn.dataset.dir > 0 ? 1 : 0]]);
+  });
+  [spaceButton, modeSpaceButton].forEach(button => {
+    button.textContent = colorSpace === 'hsl' ? 'RGB' : 'HSL';
+    button.setAttribute('aria-label', colorSpace === 'hsl' ? d.switchToRgb : d.switchToHsl);
   });
   document.querySelectorAll('.lang-btn').forEach(b => {
     b.textContent = lang === 'ja' ? 'EN' : '日本語';
@@ -1171,18 +1299,14 @@ function popSwatches() {
 
 // 結果画面のスライダー比較: トラックのグラデはターゲットの文脈で描き、
 // 白丸=あなたの位置、白リング=ターゲットの位置を重ねて表示する
-function renderResultSlider(trackId, deltaId, targetVal, playerVal, max, diff, unit) {
+function renderResultSlider(trackId, deltaId, targetValues, playerValues, index, diff) {
   const track = $(trackId);
-  const t = state.target;
-  if (trackId === 'rtHue') track.style.background = HUE_RAINBOW;
-  else if (trackId === 'rtSat')
-    track.style.background = `linear-gradient(to right, hsl(${t.h}, 0%, ${t.l}%), hsl(${t.h}, 100%, ${t.l}%))`;
-  else
-    track.style.background = `linear-gradient(to right, hsl(${t.h}, ${t.s}%, 0%), hsl(${t.h}, ${t.s}%, 50%), hsl(${t.h}, ${t.s}%, 100%))`;
-  track.querySelector('.marker.target').style.left = (targetVal / max * 100) + '%';
-  track.querySelector('.marker.you').style.left = (playerVal / max * 100) + '%';
+  const max = channelMaxes()[index];
+  track.style.background = channelTrackBackground(targetValues, index);
+  track.querySelector('.marker.target').style.left = (targetValues[index] / max * 100) + '%';
+  track.querySelector('.marker.you').style.left = (playerValues[index] / max * 100) + '%';
   const delta = $(deltaId);
-  delta.textContent = fmtSigned(diff, unit);
+  delta.textContent = fmtSigned(Math.round(diff), channelUnits()[index]);
   delta.classList.toggle('zero', diff === 0);
 }
 
@@ -1379,13 +1503,18 @@ function startSession(mode) {
 function newQuestion() {
   state.qIndex++;
   state.target = randomTarget();
-  // グレーから組み立てる。色相の初期位置はランダム(S=0では見えないため)。
-  // イージーは明度がロックされるため、ターゲットと同じ明度から始める
-  state.player = {
-    h: Math.floor(Math.random() * 360),
-    s: 0,
-    l: state.mode === 'easy' ? state.target.l : 50
-  };
+  // HSLはグレーから組み立て、RGBは中間値から組み立てる。
+  // イージーは第3チャンネルをターゲットと同じ値にしてロックする。
+  if (colorSpace === 'hsl') {
+    state.player = {
+      h: Math.floor(Math.random() * 360),
+      s: 0,
+      l: state.mode === 'easy' ? state.target.l : 50
+    };
+  } else {
+    const targetValues = channelValues(state.target);
+    setPlayerFromValues([128, 128, state.mode === 'easy' ? targetValues[2] : 128]);
+  }
   sessionToken++;
   resultOverlay.classList.remove('show');
   renderSwatches();
@@ -1406,13 +1535,27 @@ function judge() {
   lockActivations();
   clearTimers();
   timerRow.hidden = true;
-  const labT = hslToLab(state.target.h, state.target.s, state.target.l);
-  const labP = hslToLab(state.player.h, state.player.s, state.player.l);
+  const targetValues = channelValues(state.target);
+  const playerValues = channelValues(state.player);
+  const labT = colorSpace === 'hsl'
+    ? hslToLab(...targetValues)
+    : rgbToLab(...targetValues);
+  const labP = colorSpace === 'hsl'
+    ? hslToLab(...playerValues)
+    : rgbToLab(...playerValues);
   const deltaE = ciede2000(labT, labP);
   const score = scoreFromDeltaE(deltaE);
   const grade = gradeFromDeltaE(deltaE);
 
-  state.results.push({ score, deltaE, grade, target: { ...state.target }, player: { ...state.player } });
+  state.results.push({
+    score,
+    deltaE,
+    grade,
+    target: { ...state.target },
+    player: { ...state.player },
+    targetValues: [...targetValues],
+    playerValues: [...playerValues]
+  });
   if (state.mode === 'nightmare') {
     if (score >= NIGHTMARE.passScore) {
       state.streak++;
@@ -1435,20 +1578,21 @@ function judge() {
   $('retireTag').hidden = !(state.mode === 'nightmare' && state.nmOver === 'fail');
   $('retireTag').textContent = t('retire');
 
-  $('cmpTarget').style.background = hslCss(state.target);
-  $('cmpPlayer').style.background = hslCss(state.player);
+  $('cmpTarget').style.background = colorCss(state.target);
+  $('cmpPlayer').style.background = colorCss(state.player);
 
-  const dh = Math.round(hueDiff(state.player.h, state.target.h));
-  const ds = state.player.s - state.target.s;
-  const dl = state.player.l - state.target.l;
-  renderResultSlider('rtHue', 'rdHue', state.target.h, state.player.h, 359, dh, '°');
-  renderResultSlider('rtSat', 'rdSat', state.target.s, state.player.s, 100, ds, '%');
-  renderResultSlider('rtLight', 'rdLight', state.target.l, state.player.l, 100, dl, '%');
+  const diffs = colorSpace === 'hsl'
+    ? [hueDiff(playerValues[0], targetValues[0]), playerValues[1] - targetValues[1], playerValues[2] - targetValues[2]]
+    : playerValues.map((value, i) => value - targetValues[i]);
+  renderResultSlider('rtHue', 'rdHue', targetValues, playerValues, 0, diffs[0]);
+  renderResultSlider('rtSat', 'rdSat', targetValues, playerValues, 1, diffs[1]);
+  renderResultSlider('rtLight', 'rdLight', targetValues, playerValues, 2, diffs[2]);
 
-  const f = c => `H ${c.h}° / S ${c.s}% / L ${c.l}%`;
+  const labels = channelShorts();
+  const f = values => values.map((value, i) => `${labels[i]} ${formatChannelValue(value, i)}`).join(' / ');
   $('hslLines').innerHTML =
-    `<div>${t('target')} ${f(state.target)}</div>` +
-    `<div>${t('yours')} ${f(state.player)}</div>`;
+    `<div>${t('target')} ${f(targetValues)}</div>` +
+    `<div>${t('yours')} ${f(playerValues)}</div>`;
 
   $('nextButton').textContent = sessionEnded() ? t('seeResults') : t('next');
   resultOverlay.classList.add('show');
@@ -1518,16 +1662,12 @@ function showSummary() {
 // ---------- イベント ----------
 
 function onSliderInput() {
-  state.player = {
-    h: Number(hueSlider.value),
-    s: Number(satSlider.value),
-    l: Number(lightSlider.value)
-  };
+  state.player = valuesToHsl(sliders.map(slider => Number(slider.value)));
   renderSwatches();
   renderSliders();
 }
 
-for (const slider of [hueSlider, satSlider, lightSlider]) {
+for (const slider of sliders) {
   slider.addEventListener('input', onSliderInput);
 }
 
@@ -1536,14 +1676,11 @@ document.querySelectorAll('.step-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     if (btn.disabled) return;
     const dir = Number(btn.dataset.dir);
-    const p = state.player;
-    if (btn.dataset.channel === 'h') {
-      p.h = (p.h + dir + 360) % 360;
-    } else if (btn.dataset.channel === 's') {
-      p.s = Math.min(100, Math.max(0, p.s + dir));
-    } else {
-      p.l = Math.min(100, Math.max(0, p.l + dir));
-    }
+    const index = { h: 0, s: 1, l: 2 }[btn.dataset.channel];
+    const values = channelValues(state.player);
+    if (index === 0 && colorSpace === 'hsl') values[index] = (values[index] + dir + 360) % 360;
+    else values[index] = Math.min(channelMaxes()[index], Math.max(0, values[index] + dir));
+    state.player = valuesToHsl(values);
     renderSwatches();
     renderSliders();
   });
@@ -1590,6 +1727,13 @@ $('taBackButton').addEventListener('click', () => {
   renderModeBests();
   modeOverlay.classList.add('show');
 });
+function toggleColorSpace(restartSession = true) {
+  colorSpace = colorSpace === 'hsl' ? 'rgb' : 'hsl';
+  applyLang();
+  if (restartSession) startSession(state.mode);
+}
+spaceButton.addEventListener('click', () => toggleColorSpace());
+modeSpaceButton.addEventListener('click', () => toggleColorSpace(false));
 document.querySelectorAll('.lang-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     lang = lang === 'ja' ? 'en' : 'ja';
