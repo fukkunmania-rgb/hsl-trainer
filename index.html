@@ -318,6 +318,7 @@
 
   .secondary-btn:hover { border-color: rgba(255, 255, 255, 0.25); }
   .secondary-btn:focus-visible { outline: 2px solid #7db8ff; outline-offset: 2px; }
+  .primary-btn:disabled, .secondary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* ---------- モード選択 ---------- */
   .mode-modal { gap: 10px; }
@@ -684,6 +685,131 @@
 
   .q-score { color: var(--muted); }
 
+  /* ---------- 世界ランキング ---------- */
+  .world-rank-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .world-rank-section .wr-note { color: var(--muted); }
+
+  .world-rank-section .wr-rank {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffd75e;
+  }
+
+  .world-rank-section .wr-status { color: var(--muted); }
+
+  .world-rank-section .wr-error { color: #ff8787; }
+
+  .world-rank-section .wr-best {
+    font-weight: 700;
+    color: #ffd75e;
+  }
+
+  .ranking-modal { width: min(92vw, 480px); }
+
+  .nickname-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .nickname-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    outline: none;
+  }
+
+  .nickname-row input:focus-visible { border-color: rgba(255, 255, 255, 0.25); }
+
+  .ranking-status { font-size: 12px; color: var(--muted); }
+
+  .ranking-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: min(46vh, 420px);
+    overflow-y: auto;
+  }
+
+  .ranking-list li {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 64px 58px;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--panel-2);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ranking-list li.me { border-color: rgba(255, 209, 102, 0.4); }
+
+  .ranking-list .rk-rank { color: var(--muted); font-weight: 700; }
+
+  .ranking-list .rk-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+
+  .ranking-list .rk-score { text-align: right; font-weight: 700; }
+
+  .ranking-list .rk-de { text-align: right; color: var(--muted); }
+
+  .my-rank-box {
+    width: 100%;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .my-rank-box .rk-line {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 64px 58px;
+    gap: 8px;
+    align-items: center;
+    margin-top: 6px;
+    padding: 6px 10px;
+    background: var(--panel-2);
+    border: 1px solid rgba(255, 209, 102, 0.4);
+    border-radius: 8px;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .my-rank-box .rk-line .rk-score { font-weight: 700; }
+  .my-rank-box .rk-line .rk-de { color: var(--muted); font-weight: 400; }
+
+  @media (max-width: 420px) {
+    .ranking-list li, .my-rank-box .rk-line { grid-template-columns: 36px minmax(0, 1fr) 56px; }
+    .ranking-list .rk-de, .my-rank-box .rk-de { display: none; }
+  }
+
   @media (max-width: 420px) {
     .card { padding: 20px 18px 22px; }
     .swatch { height: 130px; }
@@ -798,6 +924,7 @@
     </div>
     <p class="tagline" id="taStartInfo">全10問・1問30秒・リザルト5秒</p>
     <button class="primary-btn" id="taStartButton" data-i18n="start">スタート</button>
+    <button class="secondary-btn" id="taRankingButton" data-i18n="viewRanking">ランキングを見る</button>
     <button class="secondary-btn" id="taBackButton" data-i18n="changeMode">モードを選ぶ</button>
   </div>
 </div>
@@ -862,9 +989,28 @@
       <span class="score-denom" id="summaryDenom">/ 500</span>
     </div>
     <div class="summary-stats" id="summaryStats"></div>
+    <div class="world-rank-section" id="worldRankSection" hidden></div>
     <ul class="question-list" id="questionList"></ul>
     <button class="primary-btn" id="restartButton" data-i18n="playAgain">もう一度</button>
     <button class="secondary-btn" id="changeModeButton" data-i18n="changeMode">モードを選ぶ</button>
+  </div>
+</div>
+
+<!-- 世界ランキングオーバーレイ -->
+<div class="overlay" id="rankingOverlay">
+  <div class="modal ranking-modal">
+    <div class="summary-head">
+      <h2 data-i18n="worldRanking">ランキング</h2>
+    </div>
+    <div class="nickname-row">
+      <label for="nicknameInput" data-i18n="nicknameLabel">プレイヤー名</label>
+      <input type="text" id="nicknameInput" maxlength="16" autocomplete="off" spellcheck="false">
+      <button type="button" class="chip-btn" id="nicknameSaveButton" data-i18n="nicknameSave">保存</button>
+    </div>
+    <div class="ranking-status" id="rankingStatus"></div>
+    <ol class="ranking-list" id="rankingList"></ol>
+    <div class="my-rank-box" id="myRankBox" hidden></div>
+    <button class="primary-btn" id="rankingCloseButton" data-i18n="close">閉じる</button>
   </div>
 </div>
 
@@ -998,6 +1144,18 @@ const LANG_KEY = 'colorTrainer.lang';
 // 演出確認用: ?ssdemo=1 で判定結果のグレード表示が強制的にSSになる(採点は通常どおり)
 const SS_DEMO = new URLSearchParams(location.search).has('ssdemo');
 
+// ============================================================
+// 世界ランキング(Supabase)設定 — World Ranking Setup
+// Supabaseプロジェクトを作成したら、Project URLと
+// Publishable(anon)keyをここに入力する。
+// ※ service_role key等の秘密鍵は絶対にここに入れないこと。
+// ============================================================
+const SUPABASE_URL = 'https://emcpideygbgtksfmlkof.supabase.co';      // 例: 'https://xxxxxxxxxxxx.supabase.co'
+const SUPABASE_ANON_KEY = 'sb_publishable_BEbRAREZHbShA9HeDCv5Wg_yr239-uf'; // 例: 'eyJhbGciOi...' (Publishable / anon key)
+const RANKING_NICKNAME_KEY = 'colorTrainer.nickname';
+// 未設定のまま送信された記録に付ける既定名(サーバーは1〜16文字を必須とするため空欄にできない)
+const DEFAULT_RANKING_NICKNAME = 'Anonymous';
+
 // タイムアタックの設定。テストプレイ時はURLパラメータでも上書きできる:
 //   ?taplay=6(1問の秒) &taresult=2(リザルト秒) &tarounds=3(問数)
 const TIME_ATTACK = {
@@ -1049,6 +1207,29 @@ const I18N = {
     streakFmt: '連続 {n}回',
     retire: 'リタイア',
     perfect: '完璧!!',
+    worldRanking: 'ランキング',
+    viewRanking: 'ランキングを見る',
+    yourRank: 'あなたの順位',
+    worldRankFmt: 'ランキング {n}位',
+    rankFmt: '{n}位',
+    youMark: '← あなた',
+    anonymousNote: 'プレイヤー名はランキング画面から設定できます',
+    submitting: 'ランキング送信中...',
+    submitFailed: 'ランキングへの送信に失敗しました',
+    retry: '再送信',
+    loadFailed: 'ランキングを取得できませんでした',
+    loading: '読み込み中...',
+    notEligible: 'カスタム設定のためランキング対象外',
+    rankingUnavailable: 'ランキングは現在利用できません',
+    nicknameLabel: 'プレイヤー名',
+    nicknameSave: '保存',
+    nicknameSaved: '保存しました',
+    nicknameInvalid: '1〜16文字で入力してください',
+    noEntries: 'まだ登録がありません',
+    newPersonalBest: '自己ベスト更新!',
+    thisRun: '今回',
+    personalBest: '自己ベスト',
+    close: '閉じる',
     sessionComplete: 'セッション完了', newRecord: '新記録!',
     best: 'ベスト', total: '合計', pt: 'pt',
     avgDeltaE: '平均 ΔE',
@@ -1077,6 +1258,29 @@ const I18N = {
     streakFmt: 'Streak {n}',
     retire: 'Game Over',
     perfect: 'PERFECT!!',
+    worldRanking: 'Ranking',
+    viewRanking: 'View Ranking',
+    yourRank: 'Your Rank',
+    worldRankFmt: 'Rank #{n}',
+    rankFmt: '#{n}',
+    youMark: '← YOU',
+    anonymousNote: 'You can set your nickname from the ranking screen',
+    submitting: 'Submitting...',
+    submitFailed: 'Failed to submit to ranking',
+    retry: 'Retry',
+    loadFailed: 'Failed to load ranking',
+    loading: 'Loading...',
+    notEligible: 'Custom settings are not eligible for the ranking.',
+    rankingUnavailable: 'Ranking is currently unavailable',
+    nicknameLabel: 'Nickname',
+    nicknameSave: 'Save',
+    nicknameSaved: 'Saved',
+    nicknameInvalid: 'Enter 1–16 characters',
+    noEntries: 'No entries yet',
+    newPersonalBest: 'New Personal Best!',
+    thisRun: 'This run',
+    personalBest: 'Personal Best',
+    close: 'Close',
     sessionComplete: 'Session Complete', newRecord: 'New Record!',
     best: 'Best', total: 'Total', pt: 'pt',
     avgDeltaE: 'Avg ΔE',
@@ -1096,7 +1300,8 @@ const state = {
   nmOver: null,              // ナイトメア: 終了理由 ('fail' | 'cap' | null)
   target: { h: 0, s: 0, l: 0 },
   player: { h: 0, s: 0, l: 50 },
-  results: []                // { score, deltaE, grade, target, player }
+  qStart: 0,                 // この問題の開始時刻(世界ランキングのelapsed_ms計測用)
+  results: []                // { score, deltaE, grade, target, player, elapsedMs }
 };
 
 const $ = id => document.getElementById(id);
@@ -1475,7 +1680,9 @@ function startSession(mode) {
   state.results = [];
   state.streak = 0;
   state.nmOver = null;
+  rankingSubmittedThisSession = false; // ランキング二重送信対策をセッション単位でリセット
   clearTimers();
+  rankingOverlay.classList.remove('show');
   applyModeUi();
   modeOverlay.classList.remove('show');
   summaryOverlay.classList.remove('show');
@@ -1498,6 +1705,7 @@ function newQuestion() {
   sessionToken++;
   resultOverlay.classList.remove('show');
   resultModal.classList.remove('ss-shine');
+  state.qStart = Date.now();
   renderSwatches();
   renderSliders();
   renderProgress();
@@ -1523,7 +1731,13 @@ function judge() {
   let grade = gradeFromDeltaE(deltaE);
   if (SS_DEMO) grade = 'SS'; // 演出確認用(採点への影響なし)
 
-  state.results.push({ score, deltaE, grade, target: { ...state.target }, player: { ...state.player } });
+  const qElapsedMs = state.qStart ? Math.max(0, Date.now() - state.qStart) : 0;
+  state.results.push({
+    score, deltaE, grade,
+    target: { ...state.target },
+    player: { ...state.player },
+    elapsedMs: qElapsedMs
+  });
   if (state.mode === 'nightmare') {
     if (score >= NIGHTMARE.passScore) {
       state.streak++;
@@ -1637,6 +1851,249 @@ function showSummary() {
   renderBest();
   summaryOverlay.classList.add('show');
   $('restartButton').focus();
+  // 世界ランキング(タイムアタック時)。非同期なので表示をブロックしない
+  handleWorldRankingSummary(prevBest);
+}
+
+// ============================================================
+// 世界ランキング(Supabase) — 未設定・通信断でもゲーム本体は動作する
+// ============================================================
+const rankingOverlay = $('rankingOverlay');
+let sbClient = null;
+let sbLibPromise = null;
+let rankingSubmittedThisSession = false; // 同一セッションの二重送信対策
+let rankingCache = null; // { list, fetchedAt }
+
+const rankingConfigured = () => Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+// 標準ルール(全10問・1問30秒・リザルト5秒)のときだけランキング対象
+const isRankedTimeAttack = () =>
+  state.mode === 'timeattack' &&
+  TIME_ATTACK.rounds === 10 &&
+  TIME_ATTACK.playSeconds === 30 &&
+  TIME_ATTACK.resultSeconds === 5;
+
+const getSavedNickname = () => (localStorage.getItem(RANKING_NICKNAME_KEY) || '').trim();
+
+const fmtInt = n => Number(n).toLocaleString();
+
+// supabase-jsは公式CDNから必要になった時だけ読み込む(オフラインでも本編は即動作)
+function loadSupabaseLib() {
+  if (window.supabase) return Promise.resolve();
+  if (sbLibPromise) return sbLibPromise;
+  sbLibPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    s.onload = () => resolve();
+    s.onerror = () => { sbLibPromise = null; reject(new Error('cdn load failed')); };
+    document.head.appendChild(s);
+  });
+  return sbLibPromise;
+}
+
+async function getSupabase() {
+  if (!rankingConfigured()) return null;
+  try {
+    await loadSupabaseLib();
+  } catch (e) {
+    return null;
+  }
+  if (!sbClient) sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return sbClient;
+}
+
+// 匿名認証。session永続化はSupabase Auth(localStorage)に任せる
+async function ensureAuthSession() {
+  const sb = await getSupabase();
+  if (!sb) return null;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) return sb;
+    const { error } = await sb.auth.signInAnonymously();
+    if (error) return null;
+    return sb;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function submitRankingResult(nickname, score, avgDeltaE, elapsedMs) {
+  const sb = await ensureAuthSession();
+  if (!sb) throw new Error('ranking unavailable');
+  const { data, error } = await sb.rpc('submit_time_attack_score', {
+    p_nickname: nickname,
+    p_score: score,
+    p_avg_delta_e: avgDeltaE,
+    p_elapsed_ms: elapsedMs
+  });
+  if (error) throw error;
+  return data; // { updated, rank }
+}
+
+async function fetchTop1000(force = false) {
+  if (!force && rankingCache && Date.now() - rankingCache.fetchedAt < 60000) {
+    return rankingCache.list;
+  }
+  const sb = await ensureAuthSession();
+  if (!sb) throw new Error('ranking unavailable');
+  const { data, error } = await sb.rpc('get_time_attack_top1000');
+  if (error) throw error;
+  rankingCache = { list: data || [], fetchedAt: Date.now() };
+  return rankingCache.list;
+}
+
+async function updateNicknameOnServer(nickname) {
+  const sb = await ensureAuthSession();
+  if (!sb) return;
+  try {
+    await sb.rpc('update_time_attack_nickname', { p_nickname: nickname });
+    rankingCache = null; // 表示名が変わるのでキャッシュを無効化
+  } catch (e) {
+    // 失敗してもローカル保存は有効。次回送信時に反映される
+  }
+}
+
+// ---------- DOM構築ヘルパ(XSS回避のためランキング行は全てDOM APIで組み立てる) ----------
+function el(tag, cls, text) {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function buildRankRow(rank, name, score, avgDeltaE, isMe) {
+  const li = el('li', isMe ? 'me' : null);
+  li.appendChild(el('span', 'rk-rank', fmtInt(rank)));
+  li.appendChild(el('span', 'rk-name', isMe ? `${name} ${t('youMark')}` : name));
+  li.appendChild(el('span', 'rk-score', `${fmtInt(score)} ${t('pt')}`));
+  li.appendChild(el('span', 'rk-de', `ΔE ${Number(avgDeltaE).toFixed(2)}`));
+  return li;
+}
+
+// ---------- ランキングモーダル ----------
+function openRankingModal() {
+  rankingOverlay.classList.add('show');
+  $('nicknameInput').value = getSavedNickname();
+  $('rankingList').innerHTML = '';
+  $('myRankBox').hidden = true;
+  renderRankingStatus(t('loading'));
+  loadRankingList(false);
+}
+
+function renderRankingStatus(text) {
+  $('rankingStatus').textContent = text;
+}
+
+async function loadRankingList(force) {
+  if (!rankingConfigured()) {
+    renderRankingStatus(t('rankingUnavailable'));
+    return;
+  }
+  renderRankingStatus(t('loading'));
+  try {
+    const list = await fetchTop1000(force);
+    const listEl = $('rankingList');
+    listEl.innerHTML = '';
+    if (!list.length) {
+      renderRankingStatus(t('noEntries'));
+      return;
+    }
+    renderRankingStatus('');
+    for (const row of list) {
+      listEl.appendChild(buildRankRow(row.rank, row.nickname, row.score, row.avg_delta_e, row.is_me));
+    }
+    // TOP1000圏外の自分の順位を下部に表示
+    if (!list.some(r => r.is_me)) {
+      const sb = await ensureAuthSession();
+      if (!sb) return;
+      const { data: mine, error } = await sb.rpc('get_my_time_attack_rank');
+      if (!error && mine && mine.length) {
+        const box = $('myRankBox');
+        box.hidden = false;
+        box.innerHTML = '';
+        box.appendChild(el('div', null, `${t('yourRank')}`));
+        const line = el('div', 'rk-line');
+        line.appendChild(el('span', 'rk-rank', fmtInt(mine[0].rank)));
+        line.appendChild(el('span', 'rk-name', mine[0].nickname));
+        line.appendChild(el('span', 'rk-score', `${fmtInt(mine[0].score)} ${t('pt')}`));
+        line.appendChild(el('span', 'rk-de', `ΔE ${Number(mine[0].avg_delta_e).toFixed(2)}`));
+        box.appendChild(line);
+      }
+    }
+  } catch (e) {
+    renderRankingStatus(t('loadFailed'));
+  }
+}
+
+// ---------- タイムアタック終了画面のランキング表示 ----------
+async function handleWorldRankingSummary(personalBest) {
+  const section = $('worldRankSection');
+  section.innerHTML = '';
+  section.hidden = true;
+  if (state.mode !== 'timeattack') return;
+
+  if (!isRankedTimeAttack()) {
+    section.hidden = false;
+    section.appendChild(el('div', 'wr-note', t('notEligible')));
+    return;
+  }
+  if (!rankingConfigured()) return; // 未設定(ローカル開発)では表示しない
+
+  const total = state.results.reduce((sum, r) => sum + r.score, 0);
+  const avgDeltaE = state.results.reduce((sum, r) => sum + r.deltaE, 0) / state.results.length;
+  const elapsedMs = state.results.reduce((sum, r) => sum + (r.elapsedMs || 0), 0);
+  section.hidden = false;
+
+  const nickname = getSavedNickname();
+  // 名前の入力は求めず自動送信する。未設定なら既定名で登録し、
+  // プレイヤー名は後からランキング画面で設定できる
+  await sendResult(section, nickname || DEFAULT_RANKING_NICKNAME, total, avgDeltaE, elapsedMs, personalBest, false, !nickname);
+}
+
+function renderRankingStatusIn(section, text) {
+  let status = section.querySelector('.wr-status');
+  if (!status) {
+    status = el('div', 'wr-status');
+    section.appendChild(status);
+  }
+  status.textContent = text;
+}
+
+// 記録送信と結果表示(名前は聞かずに自動送信)
+async function sendResult(section, nickname, total, avgDeltaE, elapsedMs, personalBest, isFirst, isAnonymous) {
+  if (rankingSubmittedThisSession && !isFirst) return;
+  rankingSubmittedThisSession = true;
+  renderRankingStatusIn(section, t('submitting'));
+  try {
+    const data = await submitRankingResult(nickname, total, avgDeltaE, elapsedMs);
+    rankingCache = null; // 送信後はランキングキャッシュを無効化
+    section.innerHTML = '';
+    if (data && data.updated) {
+      section.appendChild(el('div', 'wr-best', t('newPersonalBest')));
+    } else if (!isFirst) {
+      section.appendChild(el('div', null,
+        `${t('thisRun')}: ${total} ${t('pt')} / ${t('personalBest')}: ${Math.max(total, personalBest || 0)} ${t('pt')}`));
+    }
+    const rankLine = el('div', 'wr-rank',
+      t('worldRankFmt').replace('{n}', fmtInt(data ? data.rank : '-')));
+    section.appendChild(rankLine);
+    if (isAnonymous) {
+      section.appendChild(el('div', 'wr-note', t('anonymousNote')));
+    }
+    const viewBtn = el('button', 'secondary-btn', t('viewRanking'));
+    viewBtn.type = 'button';
+    viewBtn.addEventListener('click', openRankingModal);
+    section.appendChild(viewBtn);
+  } catch (e) {
+    renderRankingStatusIn(section, t('submitFailed'));
+    const retry = el('button', 'secondary-btn', t('retry'));
+    retry.type = 'button';
+    retry.addEventListener('click', () => {
+      // 自己ベストのみ更新するRPCなので、失敗後の再送信が重複しても無害
+      sendResult(section, nickname, total, avgDeltaE, elapsedMs, personalBest, true, isAnonymous);
+    });
+    section.appendChild(retry);
+  }
 }
 
 // ---------- イベント ----------
@@ -1680,6 +2137,7 @@ $('changeModeButton').addEventListener('click', () => {
   lockActivations();
   clearTimers();
   summaryOverlay.classList.remove('show');
+  rankingOverlay.classList.remove('show');
   renderModeBests();
   modeOverlay.classList.add('show');
 });
@@ -1689,6 +2147,7 @@ modeChip.addEventListener('click', () => {
   timerRow.hidden = true;
   resultOverlay.classList.remove('show');
   summaryOverlay.classList.remove('show');
+  rankingOverlay.classList.remove('show');
   renderModeBests();
   modeOverlay.classList.add('show');
 });
@@ -1708,6 +2167,23 @@ document.querySelectorAll('.mode-card').forEach(card => {
   });
 });
 $('taStartButton').addEventListener('click', () => startSession('timeattack'));
+$('taRankingButton').addEventListener('click', openRankingModal);
+$('rankingCloseButton').addEventListener('click', () => {
+  rankingOverlay.classList.remove('show');
+});
+$('nicknameSaveButton').addEventListener('click', () => {
+  const nick = $('nicknameInput').value.trim();
+  if (!nick || nick.length > 16) {
+    renderRankingStatus(t('nicknameInvalid'));
+    return;
+  }
+  localStorage.setItem(RANKING_NICKNAME_KEY, nick);
+  renderRankingStatus(t('nicknameSaved'));
+  updateNicknameOnServer(nick).then(() => {
+    // 表示中の一覧にも新しい名前を反映する
+    if (rankingOverlay.classList.contains('show')) loadRankingList(true);
+  });
+});
 $('taBackButton').addEventListener('click', () => {
   lockActivations();
   taStartOverlay.classList.remove('show');
@@ -1727,6 +2203,7 @@ document.addEventListener('keydown', e => {
   if (summaryOverlay.classList.contains('show')) return;
   if (modeOverlay.classList.contains('show')) return;
   if (taStartOverlay.classList.contains('show')) return;
+  if (rankingOverlay.classList.contains('show')) return;
   e.preventDefault();
   if (resultOverlay.classList.contains('show')) nextStep();
   else judge();

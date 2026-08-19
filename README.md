@@ -2,6 +2,28 @@
 
 色相・彩度・明度(HSL)の認知能力を鍛えるためのトレーニングWebアプリ。
 Photoshop風のHSLスライダーでターゲット色に合わせ、1問ごとに知覚的な色差に基づくスコアを受け取れます。
+タイムアタック(標準ルール)のスコアは、終了時にSupabaseの**ランキング(TOP1000)**へ自動登録されます
+(プレイヤー名が未設定の場合は "Anonymous" 名義で登録され、後からランキング画面で名前を設定できます)。
+
+## Ranking Setup(ランキングのセットアップ)
+
+ランキング機能はSupabaseを使用します。未設定でもゲーム本体は全機能動作します。
+
+1. **Supabaseプロジェクト作成**: [supabase.com](https://supabase.com) で新規プロジェクトを作成
+2. **匿名サインインの有効化**: Dashboardの「Authentication」→「Sign In / Providers」で「Anonymous sign-ins」を有効にする
+3. **SQLの実行**: 「SQL Editor」で `supabase_setup.sql` の内容を全て貼り付けて実行(テーブル・RLS・RPCが構築されます)
+4. **Project URLの取得**: 「Project Settings」→「Data API」のURLを確認
+5. **APIキーの取得**: 「Project Settings」→「API Keys」の **Publishable key**(旧 anon key)をコピー
+6. **HSL Trainerへの設定**: `index.html` 内の `SUPABASE_URL` と `SUPABASE_ANON_KEY` に上記を設定
+7. **デプロイ**: GitHub Pagesへpush
+8. **動作確認**: タイムアタック(標準ルール)を1プレイし、終了画面に順位が表示されれば成功
+
+**セキュリティ注意**: クライアントに設定してよいのはPublishable(anon)keyのみです。
+`service_role` key、データベースのパスワード等の秘密鍵は絶対にフロントエンドに含めないでください。
+
+ランキングの対象は標準ルール(全10問・1問30秒・リザルト5秒)のみです。
+`?tarounds=` 等のURLパラメータでカスタム設定にしている場合は対象外になります。
+順位は「合計スコア → 平均ΔE → 回答時間の合計 → 登録日時」の順で比較されます。
 
 ## 使い方
 
